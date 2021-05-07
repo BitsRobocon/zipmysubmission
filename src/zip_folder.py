@@ -2,16 +2,24 @@
 import sys, os, datetime
 import getpass
 import zipfile
+import pickle
+import json
 
-import yaml
 from getmac import get_mac_address as gma
 
 
-def write_data_in_file(file_name, bits_id):
-    os.setxattr(file_name, 'user.author', bytes(getpass.getuser(), 'utf-8'))
-    os.setxattr(file_name, 'user.mac_address', bytes(gma(), 'utf-8'))
-    os.setxattr(file_name, 'user.bits_id', bytes(bits_id, 'utf-8'))
-    os.setxattr(file_name, 'user.created_at', bytes(datetime.datetime.now().strftime('%d %b %Y, %H:%M:%S'), 'utf-8'))
+def write_data_in_file(bits_id, zipf):
+    info = {
+        'author': getpass.getuser(),
+        'mac_address': gma(),
+        'bits_id': bits_id,
+        'created_at': datetime.datetime.now().strftime('%d %b %Y, %H:%M:%S')
+    }
+    file_name = 'tmp.pkl'
+    with open(file_name, 'wb') as handle:
+        pickle.dump(info, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    zipf.write(file_name)
+    os.remove(file_name)
 
 
 def zipdir(path, ziph):
@@ -41,10 +49,10 @@ def zip_folder():
     bits_id = input('Enter your BITS ID: ')
     task_number = input('Enter the integer task number: ')
     zip_file_name = bits_id+'_task'+task_number+'.zip'
-    zipf = zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED)
+    zipf = zipfile.ZipFile(zip_file_name, 'a', zipfile.ZIP_DEFLATED)
     zipdir(folder_name, zipf)
+    write_data_in_file(bits_id, zipf)
     zipf.close()
-    write_data_in_file(zip_file_name, bits_id)
     print('Please submit the zip file '+zip_file_name)
 
 def unzip_file():
@@ -56,21 +64,22 @@ def unzip_file():
         if not os.path.exists(file_name):
             print('No file with this name exists')
             exit()
-        try:
-            user_details = {
-                'author': os.getxattr(file_name,'user.author').decode('utf-8'),
-                'mac_address': os.getxattr(file_name,'user.mac_address').decode('utf-8'),
-                    'bits_id': os.getxattr(file_name,'user.bits_id').decode('utf-8'),
-                'created_at': os.getxattr(file_name,'user.created_at').decode('utf-8')
-            }
-        except OSError:
-            print("The zipfile wasn't created using this package.")
+        folder_name = file_name.split('.')[0]
         with zipfile.ZipFile(file_name, 'r') as zip_ref:
-            zip_ref.extractall(file_name.split('.')[0])
+            zip_ref.extractall(folder_name)
+        try:
+            with open(folder_name+'/tmp.pkl', 'rb') as handle:
+                user_details = pickle.load(handle)
+                info_file = open(folder_name+'/user_submission_details.txt', 'wt')
+                info_file.write(str(user_details))
+                info_file.close()
+                print('Below are the user details for the submission:-')
+                print(json.dumps(user_details, indent=4))
+        except Exception as e:
+            print("The zipfile wasn't created using this package.\n"+str(e))
         print('\nThe zip file has been extracted to current directory and original zip file has been deleted.\n')
-        print('Below our user details for the submission:-')
-        print(yaml.dump(user_details, default_flow_style=False))
         os.remove(file_name)
+        os.remove(folder_name+'/tmp.pkl')
         exit()
     else:
         print('Imposter spotted!')
