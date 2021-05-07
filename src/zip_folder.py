@@ -8,6 +8,13 @@ import json
 from getmac import get_mac_address as gma
 
 
+# Support for Python2
+try:
+    input = raw_input
+except NameError:
+    pass
+
+
 def write_data_in_file(bits_id, zipf):
     info = {
         'author': getpass.getuser(),
@@ -31,7 +38,7 @@ def zipdir(path, ziph):
                        os.path.join(path, '..')))
 
 def select_file():
-    files = os.listdir()
+    files = os.listdir('.')
     file_number = 0
     for file_name in files:
         file_number += 1
