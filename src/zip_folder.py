@@ -57,7 +57,10 @@ def zip_folder():
     task_number = input('Enter the integer task number: ')
     zip_file_name = bits_id+'_task'+task_number+'.zip'
     zipf = zipfile.ZipFile(zip_file_name, 'a', zipfile.ZIP_DEFLATED)
-    zipdir(folder_name, zipf)
+    if os.path.isdir(folder_name):
+        zipdir(folder_name, zipf)
+    else:
+        zipf.write(folder_name)
     write_data_in_file(bits_id, zipf)
     zipf.close()
     print('Please submit the zip file '+zip_file_name)
